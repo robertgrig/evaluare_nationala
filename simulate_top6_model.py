@@ -63,10 +63,12 @@ See project conversation history for the full derivation. Rules:
     Cisnadie excluded unless grade >= 9.
 
 Usage:
-    python3 simulate_top6_model.py [--year 2025] [--target GRADE]
-    --year:   which candidates.year pool to run (default 2025, the validated year)
-    --target: also insert one hypothetical candidate at this grade (majority
-              track, not German-track) and report where they land
+    python3 simulate_top6_model.py [--year 2025] [--target GRADE] [--german-native]
+    --year:          which candidates.year pool to run (default 2025, the validated year)
+    --target:        also insert one hypothetical candidate at this grade and
+                     report where they land
+    --german-native: mark the --target candidate as eligible for German
+                     native-language (German-medium) classes at Brukenthal/Ghibu
 """
 import argparse
 import sqlite3
@@ -235,7 +237,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--year', type=int, default=2025)
     ap.add_argument('--target', type=float, default=None)
-    ap.add_argument('--target-german-track', action='store_true')
+    ap.add_argument('--german-native', action='store_true')
     args = ap.parse_args()
 
     con = sqlite3.connect(DB)
@@ -246,7 +248,7 @@ def main():
 
     target = None
     if args.target is not None:
-        target = {'code': 'TARGET_CANDIDATE', 'grade': args.target, 'is_german_track': args.target_german_track}
+        target = {'code': 'TARGET_CANDIDATE', 'grade': args.target, 'is_german_track': args.german_native}
         candidates = candidates + [target]
 
     candidates.sort(key=lambda c: (-c['grade'], c['code']))
@@ -280,11 +282,11 @@ def main():
                 break
         print()
         if landed is None:
-            print(f"Target candidate (grade={args.target}, german_track={args.target_german_track}) did NOT get a seat.")
+            print(f"Target candidate (grade={args.target}, german_track={args.german_native}) did NOT get a seat.")
         else:
             r = offerings[landed]
             pos = len(assigned[landed])
-            print(f"Target candidate (grade={args.target}, german_track={args.target_german_track}) lands at:")
+            print(f"Target candidate (grade={args.target}, german_track={args.german_native}) lands at:")
             print(f"  School: {r['school']} (rank {r['grade_rank']})")
             print(f"  Specialization: {r['spec']} | Profil: {r['profil']} | Limba: {r['lang']}")
             print(f"  Seat {pos} of {r['num_places']}")

@@ -33,7 +33,7 @@ python3 simulate_top6_model.py --year 2026
 ### Where would a given candidate land?
 
 Pass `--target GRADE` to drop one hypothetical candidate into the pool and
-report which class they'd be admitted to. Add `--target-german-track` if the
+report which class they'd be admitted to. Add `--german-native` if the
 candidate is eligible for German native-language (German-medium) classes,
 which unlocks the German-medium seats at Brukenthal and Ghibu.
 
@@ -44,7 +44,7 @@ python3 simulate_top6_model.py --year 2026 --target 8.67
 #      seat 28 of 28, simulated cutoff 8.65
 
 # German-native-eligible candidate with a lower 8.60 average
-python3 simulate_top6_model.py --year 2026 --target 8.60 --target-german-track
+python3 simulate_top6_model.py --year 2026 --target 8.60 --german-native
 #   -> LT Onisifor Ghibu — Științe ale naturii (German-medium)
 #      seat 28 of 28, simulated cutoff 8.50
 ```
