@@ -1,11 +1,11 @@
-import sqlite3, os, csv, json
+import sqlite3, os, csv
 
 DB = "/Users/robert/Library/Scripts/school-admissions/admissions.db"
 SCHEMA = "/Users/robert/Library/Scripts/school-admissions/schema.sql"
-CANDIDATES_CSV = "/Users/robert/Library/Scripts/school-admissions/candidates_scraped.csv"
+CANDIDATES_CSV = "/Users/robert/Library/Scripts/school-admissions/candidates_2026.csv"
 YEAR = "2026-2027"
 CANDIDATES_YEAR = 2026
-CANDIDATES_2025_JSON = "/Users/robert/Library/Scripts/school-admissions/candidates_2025.json"
+CANDIDATES_2025_CSV = "/Users/robert/Library/Scripts/school-admissions/candidates_2025.csv"
 YEAR_2025 = "2025-2026"
 CANDIDATES_YEAR_2025 = 2025
 
@@ -227,72 +227,46 @@ cur.execute("""
 """)
 
 # ---------------------------------------------------------- candidates ----
-# Sourced from evaluare.edu.ro's full county ranking (Jud=33, all 152 pages),
-# scraped to candidates_scraped.csv. Superset of the earlier xlsx (which was
-# filtered to native-language-exam candidates only).
+# Both years sourced from evaluare.edu.ro's full county ranking (Jud=33),
+# normalized to the same CSV schema (candidates_2026.csv scraped directly;
+# candidates_2025.csv converted from the site's archived JSON endpoint).
+_lang_normalize = {'Limba germană': 'Limba germana', 'Limba maghiară': 'Limba maghiara'}
+
+
 def num_or_none(v):
     return None if v in ('-', 'Absent', '') else float(v)
 
-with open(CANDIDATES_CSV, encoding='utf-8') as f:
-    reader = csv.DictReader(f)
-    seen_codes = set()
-    n_skipped_dupes = 0
-    n = 0
-    n_absent = 0
-    for row in reader:
-        code = row['code']
-        if code in seen_codes:
-            n_skipped_dupes += 1
-            continue
-        seen_codes.add(code)
-        if row['media'] == 'Absent':
-            n_absent += 1
-            continue
-        native_lang = None if row['mat_lang'] == '-' else row['mat_lang']
-        cur.execute("""INSERT INTO candidates
-            (year, nr, idx, candidate_code, national_rank, source_school, grade_romana,
-             grade_matematica, native_language, grade_native_language, grade_average, school_year)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (CANDIDATES_YEAR, int(row['idx']), int(row['idx']), code, int(row['pos']), row['school'],
-             num_or_none(row['rom_n']), num_or_none(row['mat_n']), native_lang,
-             num_or_none(row['mat_lang_n']), num_or_none(row['media']), YEAR))
-        n += 1
-print(f"candidates: imported {n}, skipped {n_skipped_dupes} exact-duplicate row(s), skipped {n_absent} Absent")
 
-# ------------------------------------------------------ candidates (2025) --
-# Sourced from static.evaluare.edu.ro's 2025 archive: a single JSON file
-# backing the site's client-side pagination (no need to scrape per-page HTML).
-# 'mev' (media) uses -2 as an "Absent" sentinel; ri/mi/lmi use null directly.
-with open(CANDIDATES_2025_JSON, encoding='utf-8') as f:
-    data_2025 = json.load(f)
+def import_candidates(csv_path, year, school_year):
+    with open(csv_path, encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        seen_codes = set()
+        n_dupes = n = n_absent = 0
+        for row in reader:
+            code = row['code']
+            if code in seen_codes:
+                n_dupes += 1
+                continue
+            seen_codes.add(code)
+            if row['media'] == 'Absent':
+                n_absent += 1
+                continue
+            # normalize diacritics so eligibility checks against
+            # native_language match consistently across both years
+            native_lang = None if row['mat_lang'] == '-' else _lang_normalize.get(row['mat_lang'], row['mat_lang'])
+            cur.execute("""INSERT INTO candidates
+                (year, nr, idx, candidate_code, national_rank, source_school, grade_romana,
+                 grade_matematica, native_language, grade_native_language, grade_average, school_year)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (year, int(row['idx']), int(row['idx']), code, int(row['pos']), row['school'],
+                 num_or_none(row['rom_n']), num_or_none(row['mat_n']), native_lang,
+                 num_or_none(row['mat_lang_n']), num_or_none(row['media']), school_year))
+            n += 1
+    print(f"candidates {year}: imported {n}, skipped {n_dupes} exact-duplicate row(s), skipped {n_absent} Absent")
 
-n2025 = 0
-seen_2025 = set()
-n2025_dupes = 0
-n2025_absent = 0
-for d in data_2025:
-    code = d['name']
-    if code in seen_2025:
-        n2025_dupes += 1
-        continue
-    seen_2025.add(code)
-    if d['mev'] == -2:
-        n2025_absent += 1
-        continue
-    # 2025 source uses proper diacritics ("Limba germană"); normalize to the
-    # non-diacritic convention used everywhere else in this DB ("Limba germana"),
-    # otherwise eligibility checks against native_language silently fail to match.
-    _lang_normalize = {'Limba germană': 'Limba germana', 'Limba maghiară': 'Limba maghiara'}
-    native_lang = None if d['lmp'] == '-' else _lang_normalize.get(d['lmp'], d['lmp'])
-    mev = d['mev']
-    cur.execute("""INSERT INTO candidates
-        (year, nr, idx, candidate_code, national_rank, source_school, grade_romana,
-         grade_matematica, native_language, grade_native_language, grade_average, school_year)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (CANDIDATES_YEAR_2025, d['index'], d['index'], code, d['index'], d['school'],
-         d['ri'], d['mi'], native_lang, d['lmi'], mev, YEAR_2025))
-    n2025 += 1
-print(f"candidates 2025: imported {n2025}, skipped {n2025_dupes} exact-duplicate row(s), skipped {n2025_absent} Absent")
+
+import_candidates(CANDIDATES_CSV, CANDIDATES_YEAR, YEAR)
+import_candidates(CANDIDATES_2025_CSV, CANDIDATES_YEAR_2025, YEAR_2025)
 
 con.commit()
 
