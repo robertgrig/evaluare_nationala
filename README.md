@@ -30,6 +30,31 @@ python3 simulate_top6_model.py --year 2025   # run the simulation
 python3 simulate_top6_model.py --year 2026
 ```
 
+### Where would a given candidate land?
+
+Pass `--target GRADE` to drop one hypothetical candidate into the pool and
+report which class they'd be admitted to. Add `--target-german-track` if the
+candidate is eligible for German native-language (German-medium) classes,
+which unlocks the German-medium seats at Brukenthal and Ghibu.
+
+```bash
+# non-German-track candidate with an 8.67 average, against the 2026 pool
+python3 simulate_top6_model.py --year 2026 --target 8.67
+#   -> LT Onisifor Ghibu — Matematică-Informatică (intensiv Informatică)
+#      seat 28 of 28, simulated cutoff 8.65
+
+# German-native-eligible candidate with a lower 8.60 average
+python3 simulate_top6_model.py --year 2026 --target 8.60 --target-german-track
+#   -> LT Onisifor Ghibu — Științe ale naturii (German-medium)
+#      seat 28 of 28, simulated cutoff 8.50
+```
+
+The two examples show why eligibility matters: the German-native candidate
+gets in at a *lower* grade because German-medium seats are open only to them.
+Note that `--target` re-persists that run's cutoffs (with the extra candidate
+included) to the `simulated_cutoffs` table; re-run without `--target` to
+restore the clean projection.
+
 ## The simulation model
 
 `simulate_top6_model.py` predicts each class's admission cutoff grade by
