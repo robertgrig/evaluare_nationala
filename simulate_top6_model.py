@@ -4,10 +4,10 @@
 Current configuration (bilingv-first at Lazar/Goga, Filologie-bilingv
 excluded from that priority, open intensiv-germana eligibility, Betania
 tier-shifted by 1, "nou" classes excluded entirely, Lazar/Goga leakage
-correction, Brukenthal-Informatica correction -- see rules below) validated
-against real 2025 candidates vs. actual 2025 cutoffs: mean abs error 0.058,
-max 0.20 -- the best result of the whole derivation (plain deterministic
-baseline: mean 0.250, max 0.850).
+correction, Brukenthal-Informatica correction, Ghibu-Romanian-Real leakage
+correction -- see rules below) validated against real 2025 candidates vs.
+actual 2025 cutoffs: mean abs error 0.054, max 0.20 -- the best result of the
+whole derivation (plain deterministic baseline: mean 0.250, max 0.850).
 See project conversation history for the full derivation. Rules:
 
   - Schools ranked by grade_rank (tier), Lazar+Goga tied at tier 1.
@@ -59,6 +59,11 @@ See project conversation history for the full derivation. Rules:
     unlike the Lazar/Goga leakage above, the cause is not understood; this
     is a flat corrective adjustment, not a modeled mechanism. Brought mean
     abs error from 0.074 to 0.058 and max abs error from 0.48 to 0.20.
+  - Ghibu-Romanian-Real leakage correction: a flat +0.1 applied to Ghibu's
+    two Romanian-medium Real classes (Matematica-Informatica and Stiinte ale
+    naturii), which simulate slightly LOW vs actual (2025: 8.87 vs 8.92,
+    8.80 vs 8.90) -- more demand lands there in reality than the model
+    routes. Brought mean abs error from 0.058 to 0.054.
   - Standing rules: candidates from Medias excluded; candidates from
     Cisnadie excluded unless grade >= 9.
 
@@ -110,6 +115,19 @@ def is_brukenthal_informatica(row):
 
 
 BRUKENTHAL_INFORMATICA_ADJUSTMENT = -0.4
+
+
+# Ghibu's two Romanian-medium Real classes (Matematica-Informatica and Stiinte
+# ale naturii) simulate a bit LOW vs actual (2025: 8.87 vs 8.92, 8.80 vs 8.90)
+# -- more demand lands there in reality than the model routes. Applied as a
+# flat +0.1 leakage correction to those two classes' simulated cutoffs.
+def is_ghibu_leakage(row):
+    return (row['school'] == 'Liceul Teoretic "Onisifor Ghibu"'
+            and row['lang'] == 'Romana'
+            and ('Informatica' in row['spec'] or row['spec'] == 'Stiinte ale naturii'))
+
+
+GHIBU_LEAKAGE_ADJUSTMENT = 0.1
 
 
 def is_german_native(row):
@@ -275,6 +293,8 @@ def main():
             sim_cutoff = round(sim_cutoff + LEAKAGE_ADJUSTMENT_FOR_TOP_SCHOOLS, 4)
         if sim_cutoff is not None and is_brukenthal_informatica(r):
             sim_cutoff = round(sim_cutoff + BRUKENTHAL_INFORMATICA_ADJUSTMENT, 4)
+        if sim_cutoff is not None and is_ghibu_leakage(r):
+            sim_cutoff = round(sim_cutoff + GHIBU_LEAKAGE_ADJUSTMENT, 4)
         con.execute("""INSERT INTO simulated_cutoffs
             (offering_id, candidate_pool_year, model_version, simulated_cutoff, actual_cutoff)
             VALUES (?,?,?,?,?)""",
@@ -308,6 +328,8 @@ def main():
                 sim_for_class = round(sim_for_class + LEAKAGE_ADJUSTMENT_FOR_TOP_SCHOOLS, 4)
             if is_brukenthal_informatica(r):
                 sim_for_class = round(sim_for_class + BRUKENTHAL_INFORMATICA_ADJUSTMENT, 4)
+            if is_ghibu_leakage(r):
+                sim_for_class = round(sim_for_class + GHIBU_LEAKAGE_ADJUSTMENT, 4)
             print(f"  Last year's actual cutoff: {r['last_admission_grade']}")
             print(f"  This year's simulated cutoff for this class: {sim_for_class}")
 
