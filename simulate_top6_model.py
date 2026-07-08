@@ -63,12 +63,14 @@ See project conversation history for the full derivation. Rules:
     Cisnadie excluded unless grade >= 9.
 
 Usage:
-    python3 simulate_top6_model.py [--year 2025] [--target GRADE] [--german-native]
+    python3 simulate_top6_model.py [--year 2025] [--target GRADE] [--german-native] [--exclude TERM]
     --year:          which candidates.year pool to run (default 2025, the validated year)
     --target:        also insert one hypothetical candidate at this grade and
                      report where they land
     --german-native: mark the --target candidate as eligible for German
                      native-language (German-medium) classes at Brukenthal/Ghibu
+    --exclude:       specialization substring the --target candidate refuses
+                     (case-insensitive, e.g. 'Filologie'); repeatable
 """
 import argparse
 import sqlite3
@@ -219,12 +221,15 @@ def run_simulation(offerings, candidates):
 
     for cand in candidates:
         order = order_german_ids if cand['is_german_track'] else order_general_ids
+        excl = cand.get('exclude')  # per-candidate spec exclusions (only the --target uses this)
         for rid in order:
             if remaining[rid] <= 0:
                 continue
             if requires_german(offerings[rid]) and not cand['is_german_track']:
                 continue
             if cand['is_german_track'] and excludes_german_track(offerings[rid]):
+                continue
+            if excl and any(x in offerings[rid]['spec'].lower() for x in excl):
                 continue
             remaining[rid] -= 1
             assigned[rid].append(cand)
@@ -238,6 +243,9 @@ def main():
     ap.add_argument('--year', type=int, default=2025)
     ap.add_argument('--target', type=float, default=None)
     ap.add_argument('--german-native', action='store_true')
+    ap.add_argument('--exclude', action='append', default=[],
+                    help="specialization substring the --target candidate refuses "
+                         "(case-insensitive, e.g. 'Filologie'); repeatable")
     args = ap.parse_args()
 
     con = sqlite3.connect(DB)
@@ -248,7 +256,9 @@ def main():
 
     target = None
     if args.target is not None:
-        target = {'code': 'TARGET_CANDIDATE', 'grade': args.target, 'is_german_track': args.german_native}
+        exclude = [x.lower() for x in args.exclude]
+        target = {'code': 'TARGET_CANDIDATE', 'grade': args.target,
+                  'is_german_track': args.german_native, 'exclude': exclude}
         candidates = candidates + [target]
 
     candidates.sort(key=lambda c: (-c['grade'], c['code']))
@@ -280,13 +290,16 @@ def main():
             if any(c['code'] == 'TARGET_CANDIDATE' for c in cand_list):
                 landed = rid
                 break
+        desc = f"grade={args.target}, german_track={args.german_native}"
+        if args.exclude:
+            desc += f", excluding {args.exclude}"
         print()
         if landed is None:
-            print(f"Target candidate (grade={args.target}, german_track={args.german_native}) did NOT get a seat.")
+            print(f"Target candidate ({desc}) did NOT get a seat in the top 6.")
         else:
             r = offerings[landed]
             pos = len(assigned[landed])
-            print(f"Target candidate (grade={args.target}, german_track={args.german_native}) lands at:")
+            print(f"Target candidate ({desc}) lands at:")
             print(f"  School: {r['school']} (rank {r['grade_rank']})")
             print(f"  Specialization: {r['spec']} | Profil: {r['profil']} | Limba: {r['lang']}")
             print(f"  Seat {pos} of {r['num_places']}")

@@ -46,7 +46,9 @@ python3 simulate_top6_model.py --year 2026
 Pass `--target GRADE` to drop one hypothetical candidate into the pool and
 report which class they'd be admitted to. Add `--german-native` if the
 candidate is eligible for German native-language (German-medium) classes,
-which unlocks the German-medium seats at Brukenthal and Ghibu.
+which unlocks the German-medium seats at Brukenthal and Ghibu. Add
+`--exclude TERM` (repeatable) to make that candidate refuse any specialization
+whose name contains `TERM` (case-insensitive).
 
 ```bash
 # non-German-track candidate with an 8.67 average, against the 2026 pool
@@ -58,13 +60,20 @@ python3 simulate_top6_model.py --year 2026 --target 8.67
 python3 simulate_top6_model.py --year 2026 --target 8.60 --german-native
 #   -> LT Onisifor Ghibu — Științe ale naturii (German-medium)
 #      seat 28 of 28, simulated cutoff 8.50
+
+# same 8.60 candidate, but unwilling to do Filologie
+python3 simulate_top6_model.py --year 2026 --target 8.60 --exclude Filologie
+#   -> LT Constantin Noica — Științe ale naturii (intensiv engleză)
+#      seat 28 of 28, simulated cutoff 8.50
 ```
 
-The two examples show why eligibility matters: the German-native candidate
-gets in at a *lower* grade because German-medium seats are open only to them.
-Note that `--target` re-persists that run's cutoffs (with the extra candidate
-included) to the `simulated_cutoffs` table; re-run without `--target` to
-restore the clean projection.
+The examples show why eligibility and preferences matter: the German-native
+candidate gets in at a *lower* grade because German-medium seats are open only
+to them, and excluding a specialization can push a candidate down a rung (or
+out of the top 6 entirely if it was their only foothold). Note that `--target`
+re-persists that run's cutoffs (with the extra candidate included) to the
+`simulated_cutoffs` table; re-run without `--target` to restore the clean
+projection.
 
 ## The simulation model
 
