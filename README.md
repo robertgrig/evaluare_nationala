@@ -15,12 +15,23 @@ admission cutoff grades for the county's top 6 high schools.
   plan) plus both years of candidate data.
 - **`candidates_2026.csv`** / **`candidates_2025.csv`** — real Evaluare
   Națională candidate results for Sibiu county (Jud=33), scraped/converted
-  from evaluare.edu.ro's county ranking, one row per candidate.
+  from evaluare.edu.ro's county ranking, one row per candidate. The `media`
+  column is the final admission average, computed from each subject's *notă
+  finală* (post-contestație grade), so the 2026 data reflects the resolved
+  final ranking, not the initial pre-challenge grades.
+- **`scrape_candidates_2026.py`** — re-scrapes the 2026 candidate list from
+  evaluare.edu.ro's paginated `CandFromJudIAD.aspx` endpoint (mints an
+  ASP.NET session, pages through the county ranking, retries the endpoint's
+  intermittent 302s) and rewrites `candidates_2026.csv`.
 - **`seed.sql`** — plain-SQL dump of the built database, for portability
   without running the build script.
 - **`admissions.db`** — the built SQLite database.
 - **`simulate_top6_model.py`** — the seat-fill simulation model for the top
   6 schools (see below).
+- **`simulated_admissions_before_contestations.pdf`** /
+  **`simulated_admissions_after_contestations.pdf`** — the projected-cutoff
+  table rendered to PDF, from the candidate data before vs. after the 2026
+  contestații were resolved.
 
 ## Setup
 
